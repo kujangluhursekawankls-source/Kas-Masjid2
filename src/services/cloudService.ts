@@ -12,6 +12,7 @@ import {
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
@@ -78,6 +79,25 @@ export class CloudService {
           };
 
           await setDoc(userRef, newProfile);
+
+          // Also ensure initial masjid document exists
+          try {
+            const masjidRef = doc(db, 'masjids', defaultMasjidId);
+            const mSnap = await getDoc(masjidRef);
+            if (!mSnap.exists()) {
+              const initialMasjid: MasjidTenant = {
+                id: defaultMasjidId,
+                namaMasjid: 'Masjid Jami',
+                ownerId: firebaseUser.uid,
+                ownerEmail: firebaseUser.email || '',
+                createdAt: new Date().toISOString(),
+              };
+              await setDoc(masjidRef, initialMasjid);
+            }
+          } catch (mErr) {
+            console.warn('Init masjid on auth notice:', mErr);
+          }
+
           this.currentMasjidId = defaultMasjidId;
           callback(firebaseUser, newProfile);
         }
@@ -141,6 +161,11 @@ export class CloudService {
   public async loginWithEmail(email: string, pass: string): Promise<FirebaseUser> {
     const cred = await signInWithEmailAndPassword(auth, email, pass);
     return cred.user;
+  }
+
+  // Send Password Reset Email (Lupa Password)
+  public async sendPasswordReset(email: string): Promise<void> {
+    await sendPasswordResetEmail(auth, email);
   }
 
   // Login with Google (1-Click Popup)
