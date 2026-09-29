@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#064e3b" />
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#064e3b" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background with rounded squircle -->
+  <rect width="512" height="512" rx="112" fill="url(#grad-bg)" />
+  <rect width="512" height="512" rx="112" fill="url(#glow)" />
+
+  <!-- Outer Islamic geometric border detail -->
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="url(#gold-grad)" stroke-width="3" stroke-dasharray="12,12" opacity="0.4" />
+
+  <!-- Left Minaret -->
+  <rect x="96" y="200" width="36" height="190" fill="#f8fafc" rx="4" />
+  <polygon points="96,200 114,130 132,200" fill="url(#gold-grad)" />
+  <circle cx="114" cy="120" r="6" fill="url(#gold-grad)" />
+  <rect x="90" y="250" width="48" height="10" fill="url(#gold-grad)" rx="2" />
+  
+  <!-- Right Minaret -->
+  <rect x="380" y="200" width="36" height="190" fill="#f8fafc" rx="4" />
+  <polygon points="380,200 398,130 416,200" fill="url(#gold-grad)" />
+  <circle cx="398" cy="120" r="6" fill="url(#gold-grad)" />
+  <rect x="374" y="250" width="48" height="10" fill="url(#gold-grad)" rx="2" />
+
+  <!-- Main Mosque Building Base -->
+  <rect x="132" y="230" width="248" height="160" fill="#f8fafc" rx="8" />
+
+  <!-- Small Domes left and right -->
+  <path d="M 145 230 C 145 190, 195 190, 195 230 Z" fill="url(#gold-grad)" />
+  <path d="M 317 230 C 317 190, 367 190, 367 230 Z" fill="url(#gold-grad)" />
+
+  <!-- Main Grand Dome -->
+  <path d="M 180 230 C 180 120, 256 100, 256 95 C 256 100, 332 120, 332 230 Z" fill="url(#gold-grad)" />
+
+  <!-- Crescent & Star on top of central dome -->
+  <path d="M 256 65 A 14 14 0 1 0 268 85 A 11 11 0 1 1 256 65" fill="#fde047" />
+
+  <!-- Grand Islamic Arch Portal (Center Door) -->
+  <path d="M 224 390 L 224 300 C 224 270, 256 250, 256 250 C 256 250, 288 270, 288 300 L 288 390 Z" fill="#064e3b" />
+  <path d="M 232 390 L 232 305 C 232 280, 256 265, 256 265 C 256 265, 280 280, 280 305 L 280 390 Z" fill="#047857" />
+
+  <!-- Side Windows with Arches -->
+  <path d="M 160 330 L 160 285 C 160 270, 175 260, 175 260 C 175 260, 190 270, 190 285 L 190 330 Z" fill="#064e3b" />
+  <path d="M 322 330 L 322 285 C 322 270, 337 260, 337 260 C 337 260, 352 270, 352 285 L 352 330 Z" fill="#064e3b" />
+
+  <!-- Base Steps -->
+  <rect x="110" y="390" width="292" height="12" fill="url(#gold-grad)" rx="4" />
+  <rect x="80" y="402" width="352" height="14" fill="#e2e8f0" rx="4" />
+
+  <!-- Subtle Emblem Text / Star Symbol at bottom -->
+  <circle cx="256" cy="445" r="14" fill="url(#gold-grad)" />
+  <circle cx="256" cy="445" r="10" fill="#064e3b" />
+  <circle cx="256" cy="445" r="4" fill="#fde047" />
+</svg>

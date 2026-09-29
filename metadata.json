@@ -1,0 +1,6 @@
+{
+  "name": "Kas Masjid",
+  "description": "Aplikasi Pengelolaan Kas & Keuangan Masjid, Mushola, dan Majelis Taklim berbasis Android PWA",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
