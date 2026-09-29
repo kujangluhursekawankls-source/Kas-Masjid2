@@ -1,5 +1,6 @@
 export interface Pengurus {
   id: string;
+  masjidId?: string;
   nama: string;
   jabatan: string;
   telepon: string;
@@ -24,6 +25,7 @@ export interface KategoriPengeluaran {
 
 export interface TransaksiPemasukan {
   id: string;
+  masjidId?: string;
   nomorTransaksi: string;
   tanggal: string; // YYYY-MM-DD
   kategoriId: string;
@@ -39,6 +41,7 @@ export interface TransaksiPemasukan {
 
 export interface TransaksiPengeluaran {
   id: string;
+  masjidId?: string;
   nomorTransaksi: string;
   tanggal: string; // YYYY-MM-DD
   kategoriId: string;
@@ -92,6 +95,24 @@ export interface BackupData {
   pengeluaran: TransaksiPengeluaran[];
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  masjidId: string;
+  role: 'ketua' | 'bendahara' | 'sekretaris' | 'anggota';
+  createdAt: string;
+}
+
+export interface MasjidTenant {
+  id: string;
+  namaMasjid: string;
+  ownerId: string;
+  ownerEmail?: string;
+  createdAt: string;
+  pengaturan?: PengaturanMasjid;
+}
+
 export type ActiveTab = 
   | 'dashboard'
   | 'buku-kas'
@@ -103,4 +124,5 @@ export type ActiveTab =
   | 'whatsapp'
   | 'backup'
   | 'pengaturan'
-  | 'panduan';
+  | 'panduan'
+  | 'profil-masjid';

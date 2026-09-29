@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Pengguna aplikasi dan profil keanggotaan masjid",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "masjidId": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["ketua", "bendahara", "sekretaris", "anggota"] },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "email", "displayName", "createdAt"]
+    },
+    "Masjid": {
+      "title": "Masjid",
+      "description": "Profil masjid dan pengaturan operasional",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "namaMasjid": { "type": "string", "maxLength": 200 },
+        "alamat": { "type": "string", "maxLength": 500 },
+        "telepon": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 128 },
+        "website": { "type": "string", "maxLength": 200 },
+        "namaKetua": { "type": "string", "maxLength": 128 },
+        "namaBendahara": { "type": "string", "maxLength": 128 },
+        "rekeningBank": { "type": "string", "maxLength": 100 },
+        "namaBank": { "type": "string", "maxLength": 100 },
+        "atasNamaRekening": { "type": "string", "maxLength": 128 },
+        "logoMasjid": { "type": "string", "maxLength": 500000 },
+        "fotoMasjid": { "type": "string", "maxLength": 500000 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "namaMasjid", "ownerId"]
+    },
+    "Pemasukan": {
+      "title": "Pemasukan",
+      "description": "Catatan transaksi kas masuk",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "masjidId": { "type": "string", "maxLength": 128 },
+        "nomorTransaksi": { "type": "string", "maxLength": 64 },
+        "tanggal": { "type": "string", "maxLength": 32 },
+        "kategoriId": { "type": "string", "maxLength": 128 },
+        "kategoriNama": { "type": "string", "maxLength": 128 },
+        "sumberDana": { "type": "string", "maxLength": 200 },
+        "uraian": { "type": "string", "maxLength": 1000 },
+        "nominal": { "type": "number" },
+        "namaPetugas": { "type": "string", "maxLength": 128 },
+        "lampiranFoto": { "type": "string", "maxLength": 500000 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "masjidId", "nomorTransaksi", "tanggal", "uraian", "nominal", "namaPetugas"]
+    },
+    "Pengeluaran": {
+      "title": "Pengeluaran",
+      "description": "Catatan transaksi kas keluar",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "masjidId": { "type": "string", "maxLength": 128 },
+        "nomorTransaksi": { "type": "string", "maxLength": 64 },
+        "tanggal": { "type": "string", "maxLength": 32 },
+        "kategoriId": { "type": "string", "maxLength": 128 },
+        "kategoriNama": { "type": "string", "maxLength": 128 },
+        "uraian": { "type": "string", "maxLength": 1000 },
+        "nominal": { "type": "number" },
+        "namaPenanggungJawab": { "type": "string", "maxLength": 128 },
+        "lampiranFoto": { "type": "string", "maxLength": 500000 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "masjidId", "nomorTransaksi", "tanggal", "uraian", "nominal", "namaPenanggungJawab"]
+    },
+    "Pengurus": {
+      "title": "Pengurus",
+      "description": "Daftar susunan pengurus DKM",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "masjidId": { "type": "string", "maxLength": 128 },
+        "nama": { "type": "string", "maxLength": 128 },
+        "jabatan": { "type": "string", "maxLength": 128 },
+        "telepon": { "type": "string", "maxLength": 50 },
+        "alamat": { "type": "string", "maxLength": 300 },
+        "statusAktif": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "masjidId", "nama", "jabatan"]
+    },
+    "Kategori": {
+      "title": "Kategori",
+      "description": "Kategori pos kas masjid",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "masjidId": { "type": "string", "maxLength": 128 },
+        "nama": { "type": "string", "maxLength": 128 },
+        "keterangan": { "type": "string", "maxLength": 300 },
+        "jenis": { "type": "string", "enum": ["pemasukan", "pengeluaran"] },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "masjidId", "nama", "jenis"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Data profil pengguna dan masjid yang ditautkan"
+    },
+    "/masjids/{masjidId}": {
+      "schema": "Masjid",
+      "description": "Profil masjid dan pengaturan operasional"
+    },
+    "/masjids/{masjidId}/pemasukan/{pemasukanId}": {
+      "schema": "Pemasukan",
+      "description": "Catatan kas masuk untuk masjid bersangkutan"
+    },
+    "/masjids/{masjidId}/pengeluaran/{pengeluaranId}": {
+      "schema": "Pengeluaran",
+      "description": "Catatan kas keluar untuk masjid bersangkutan"
+    },
+    "/masjids/{masjidId}/pengurus/{pengurusId}": {
+      "schema": "Pengurus",
+      "description": "Daftar pengurus DKM masjid bersangkutan"
+    },
+    "/masjids/{masjidId}/kategori/{kategoriId}": {
+      "schema": "Kategori",
+      "description": "Kategori transaksi kas untuk masjid bersangkutan"
+    }
+  }
+}

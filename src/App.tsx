@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ActiveTab,
   TransaksiPemasukan,
@@ -12,8 +12,10 @@ import {
   KategoriPemasukan,
   KategoriPengeluaran,
   PengaturanMasjid,
+  UserProfile,
 } from './types';
 import { dbService, DEFAULT_PENGATURAN } from './services/db';
+import { cloudService } from './services/cloudService';
 import { useOnlineStatus, usePWAInstall } from './hooks/usePWA';
 import { AndroidDeviceShell } from './components/AndroidDeviceShell';
 import { AndroidTopBar } from './components/AndroidTopBar';
@@ -30,18 +32,23 @@ import { MasterKategoriView } from './components/MasterKategoriView';
 import { BackupRestoreView } from './components/BackupRestoreView';
 import { PengaturanMasjidView } from './components/PengaturanMasjidView';
 import { PanduanView } from './components/PanduanView';
+import { AuthModal } from './components/AuthModal';
 import {
   WifiOff,
   Download,
   Building2,
   Loader2,
   MessageCircle,
+  Cloud,
+  CheckCircle2,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
 
-  // Core Data States (Empty by default per prompt rules)
+  // Core Data States
   const [pemasukan, setPemasukan] = useState<TransaksiPemasukan[]>([]);
   const [pengeluaran, setPengeluaran] = useState<TransaksiPengeluaran[]>([]);
   const [pengurus, setPengurus] = useState<Pengurus[]>([]);
@@ -50,18 +57,25 @@ export default function App() {
   const [pengaturan, setPengaturan] = useState<PengaturanMasjid>(DEFAULT_PENGATURAN);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Multi-Masjid & Cloud Auth States
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
+  const [currentMasjidId, setCurrentMasjidId] = useState<string | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authDefaultMode, setAuthDefaultMode] = useState<'login' | 'register' | 'join'>('register');
+  const [welcomeBanner, setWelcomeBanner] = useState<string | null>(null);
+
   // Trigger modal flags for quick actions
   const [openAddPemasukan, setOpenAddPemasukan] = useState(false);
   const [openAddPengeluaran, setOpenAddPengeluaran] = useState(false);
 
-  // WhatsApp Message Preset state (when initiated from reports)
+  // WhatsApp Message Preset state
   const [whatsAppPreset, setWhatsAppPreset] = useState<string>('');
 
   const isOnline = useOnlineStatus();
   const { isInstallable, isInstalled, install } = usePWAInstall();
 
-  // Load all data from DB
-  const loadAllData = useCallback(async () => {
+  // Load all local data initially
+  const loadLocalData = useCallback(async () => {
     try {
       const [
         inData,
@@ -86,30 +100,102 @@ export default function App() {
       setKategoriPengeluaran(katOutData);
       setPengaturan(pengaturanData);
     } catch (e) {
-      console.error('Failed to load initial data', e);
+      console.error('Failed to load initial local data', e);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // Listen to Firebase Auth state
   useEffect(() => {
-    loadAllData();
-  }, [loadAllData]);
+    loadLocalData();
 
-  // Data Persistence Handlers
+    const unsubscribeAuth = cloudService.onAuthChange((user, profile) => {
+      setCurrentUserProfile(profile);
+      if (profile && profile.masjidId) {
+        setCurrentMasjidId(profile.masjidId);
+      } else {
+        setCurrentMasjidId(null);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      cloudService.unsubscribeAllListeners();
+    };
+  }, [loadLocalData]);
+
+  // Subscribe to real-time Cloud Firestore updates when logged in to a Masjid
+  useEffect(() => {
+    if (!currentMasjidId) {
+      cloudService.unsubscribeAllListeners();
+      return;
+    }
+
+    // Subscribe to Mosque Settings in Cloud
+    const unsubPengaturan = cloudService.subscribePengaturan(currentMasjidId, (cloudSettings) => {
+      setPengaturan(cloudSettings);
+      dbService.savePengaturan(cloudSettings);
+    });
+
+    // Subscribe to Income transactions
+    const unsubIn = cloudService.subscribePemasukan(currentMasjidId, (cloudItems) => {
+      setPemasukan(cloudItems);
+      dbService.savePemasukan(cloudItems);
+    });
+
+    // Subscribe to Expense transactions
+    const unsubOut = cloudService.subscribePengeluaran(currentMasjidId, (cloudItems) => {
+      setPengeluaran(cloudItems);
+      dbService.savePengeluaran(cloudItems);
+    });
+
+    // Subscribe to Pengurus
+    const unsubPengurus = cloudService.subscribePengurus(currentMasjidId, (cloudItems) => {
+      setPengurus(cloudItems);
+      dbService.savePengurus(cloudItems);
+    });
+
+    return () => {
+      unsubPengaturan();
+      unsubIn();
+      unsubOut();
+      unsubPengurus();
+    };
+  }, [currentMasjidId]);
+
+  // Data Persistence Handlers (writes to Cloud Firestore AND Local DB for resilient caching)
   const handleSavePemasukan = async (items: TransaksiPemasukan[]) => {
     setPemasukan(items);
     await dbService.savePemasukan(items);
+
+    if (currentMasjidId && isOnline) {
+      for (const item of items) {
+        await cloudService.addOrUpdatePemasukan(currentMasjidId, { ...item, masjidId: currentMasjidId });
+      }
+    }
   };
 
   const handleSavePengeluaran = async (items: TransaksiPengeluaran[]) => {
     setPengeluaran(items);
     await dbService.savePengeluaran(items);
+
+    if (currentMasjidId && isOnline) {
+      for (const item of items) {
+        await cloudService.addOrUpdatePengeluaran(currentMasjidId, { ...item, masjidId: currentMasjidId });
+      }
+    }
   };
 
   const handleSavePengurus = async (items: Pengurus[]) => {
     setPengurus(items);
     await dbService.savePengurus(items);
+
+    if (currentMasjidId && isOnline) {
+      for (const item of items) {
+        await cloudService.addOrUpdatePengurus(currentMasjidId, { ...item, masjidId: currentMasjidId });
+      }
+    }
   };
 
   const handleSaveKategoriPemasukan = async (items: KategoriPemasukan[]) => {
@@ -125,6 +211,18 @@ export default function App() {
   const handleSavePengaturan = async (data: PengaturanMasjid) => {
     setPengaturan(data);
     await dbService.savePengaturan(data);
+
+    if (currentMasjidId && isOnline) {
+      await cloudService.savePengaturan(currentMasjidId, data);
+    }
+  };
+
+  // Logout handler
+  const handleLogout = async () => {
+    await cloudService.logoutUser();
+    setCurrentUserProfile(null);
+    setCurrentMasjidId(null);
+    setWelcomeBanner(null);
   };
 
   // Quick Action navigation to add income/expense
@@ -157,7 +255,7 @@ export default function App() {
         <h1 className="text-xl font-bold tracking-tight">Kas Masjid Android</h1>
         <p className="text-xs text-emerald-300 mt-1 flex items-center gap-2">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          <span>Menyiapkan database Android lokal aman...</span>
+          <span>Menyiapkan database kas online & offline...</span>
         </p>
       </div>
     );
@@ -172,6 +270,14 @@ export default function App() {
           setActiveTab={setActiveTab}
           pengaturan={pengaturan}
           saldo={totalSaldo}
+          onOpenWhatsApp={() => setActiveTab('whatsapp')}
+          currentUserProfile={currentUserProfile}
+          currentMasjidId={currentMasjidId}
+          onOpenAuth={() => {
+            setAuthDefaultMode(currentUserProfile ? 'login' : 'register');
+            setIsAuthModalOpen(true);
+          }}
+          onLogout={handleLogout}
         />
 
         {/* Offline Toast Banner */}
@@ -179,6 +285,29 @@ export default function App() {
           <div className="bg-amber-600 text-white text-[11px] font-medium py-1 px-3 text-center flex items-center justify-center gap-1.5 shadow-xs">
             <WifiOff className="w-3.5 h-3.5 animate-pulse" />
             <span>Mode Offline Android Aktif &bull; Data tersimpan aman di HP</span>
+          </div>
+        )}
+
+        {/* Welcome / Mosque Onboarding Prompt Banner for New Registers */}
+        {welcomeBanner && (
+          <div className="bg-gradient-to-r from-emerald-800 to-teal-800 text-white p-3.5 mx-3 mt-3 rounded-2xl shadow-md border border-emerald-700 flex items-center justify-between gap-3 animate-fade-in">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-5 h-5 text-amber-300 shrink-0" />
+              <div className="text-xs">
+                <p className="font-bold">{welcomeBanner}</p>
+                <p className="text-[11px] text-emerald-100">Silakan lengkapi identitas dan rekening masjid Anda di menu Pengaturan.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setActiveTab('pengaturan');
+                setWelcomeBanner(null);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shrink-0 flex items-center gap-1 shadow-sm transition"
+            >
+              <span>Atur Sekarang</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
 
@@ -272,7 +401,7 @@ export default function App() {
               kategoriPemasukan={kategoriPemasukan}
               kategoriPengeluaran={kategoriPengeluaran}
               pengaturan={pengaturan}
-              onRefreshAll={loadAllData}
+              onRefreshAll={loadLocalData}
             />
           )}
 
@@ -280,6 +409,12 @@ export default function App() {
             <PengaturanMasjidView
               pengaturan={pengaturan}
               onSave={handleSavePengaturan}
+              currentUserProfile={currentUserProfile}
+              currentMasjidId={currentMasjidId}
+              onOpenAuth={() => {
+                setAuthDefaultMode(currentUserProfile ? 'login' : 'register');
+                setIsAuthModalOpen(true);
+              }}
             />
           )}
 
@@ -338,6 +473,20 @@ export default function App() {
         <AndroidBottomNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+        />
+
+        {/* Auth & Multi-Masjid Modal */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          currentUserProfile={currentUserProfile}
+          defaultMode={authDefaultMode}
+          onSuccess={(profile) => {
+            if (profile) {
+              setWelcomeBanner(`Selamat datang di database ${profile.masjidId}!`);
+              setActiveTab('pengaturan');
+            }
+          }}
         />
       </div>
     </AndroidDeviceShell>

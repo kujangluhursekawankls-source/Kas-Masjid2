@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Profile
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId && incoming().id == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId && incoming().id == userId;
+      allow delete: if false;
+    }
+
+    // Masjid Profiles & Settings
+    match /masjids/{masjidId} {
+      allow read: if isSignedIn() && isValidId(masjidId);
+      allow create: if isSignedIn() && isValidId(masjidId) && incoming().ownerId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(masjidId);
+      allow delete: if isSignedIn() && isValidId(masjidId) && existing().ownerId == request.auth.uid;
+
+      // Pemasukan Subcollection
+      match /pemasukan/{pemasukanId} {
+        allow read: if isSignedIn() && isValidId(masjidId);
+        allow create: if isSignedIn() && isValidId(masjidId) && isValidId(pemasukanId) && incoming().masjidId == masjidId;
+        allow update: if isSignedIn() && isValidId(masjidId) && isValidId(pemasukanId) && incoming().masjidId == masjidId;
+        allow delete: if isSignedIn() && isValidId(masjidId) && isValidId(pemasukanId);
+      }
+
+      // Pengeluaran Subcollection
+      match /pengeluaran/{pengeluaranId} {
+        allow read: if isSignedIn() && isValidId(masjidId);
+        allow create: if isSignedIn() && isValidId(masjidId) && isValidId(pengeluaranId) && incoming().masjidId == masjidId;
+        allow update: if isSignedIn() && isValidId(masjidId) && isValidId(pengeluaranId) && incoming().masjidId == masjidId;
+        allow delete: if isSignedIn() && isValidId(masjidId) && isValidId(pengeluaranId);
+      }
+
+      // Pengurus Subcollection
+      match /pengurus/{pengurusId} {
+        allow read: if isSignedIn() && isValidId(masjidId);
+        allow create: if isSignedIn() && isValidId(masjidId) && isValidId(pengurusId) && incoming().masjidId == masjidId;
+        allow update: if isSignedIn() && isValidId(masjidId) && isValidId(pengurusId) && incoming().masjidId == masjidId;
+        allow delete: if isSignedIn() && isValidId(masjidId) && isValidId(pengurusId);
+      }
+
+      // Kategori Subcollection
+      match /kategori/{kategoriId} {
+        allow read: if isSignedIn() && isValidId(masjidId);
+        allow create: if isSignedIn() && isValidId(masjidId) && isValidId(kategoriId) && incoming().masjidId == masjidId;
+        allow update: if isSignedIn() && isValidId(masjidId) && isValidId(kategoriId) && incoming().masjidId == masjidId;
+        allow delete: if isSignedIn() && isValidId(masjidId) && isValidId(kategoriId);
+      }
+    }
+  }
+}

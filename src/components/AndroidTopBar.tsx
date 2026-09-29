@@ -12,8 +12,13 @@ import {
   FolderTree,
   Share2,
   MessageCircle,
+  Cloud,
+  User,
+  LogOut,
+  KeyRound,
+  ShieldCheck,
 } from 'lucide-react';
-import { ActiveTab, PengaturanMasjid } from '../types';
+import { ActiveTab, PengaturanMasjid, UserProfile } from '../types';
 import { usePWAInstall } from '../hooks/usePWA';
 
 interface AndroidTopBarProps {
@@ -22,6 +27,10 @@ interface AndroidTopBarProps {
   pengaturan: PengaturanMasjid;
   saldo?: number;
   onOpenWhatsApp?: () => void;
+  currentUserProfile?: UserProfile | null;
+  currentMasjidId?: string | null;
+  onOpenAuth?: () => void;
+  onLogout?: () => void;
 }
 
 export const AndroidTopBar: React.FC<AndroidTopBarProps> = ({
@@ -30,6 +39,10 @@ export const AndroidTopBar: React.FC<AndroidTopBarProps> = ({
   pengaturan,
   saldo,
   onOpenWhatsApp,
+  currentUserProfile,
+  currentMasjidId,
+  onOpenAuth,
+  onLogout,
 }) => {
   const [showOverflowMenu, setShowOverflowMenu] = useState(false);
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
@@ -104,7 +117,35 @@ export const AndroidTopBar: React.FC<AndroidTopBarProps> = ({
         </div>
 
         {/* Right: Install & Overflow Menu */}
-        <div className="flex items-center gap-1 flex-shrink-0 relative">
+        <div className="flex items-center gap-1.5 flex-shrink-0 relative">
+          {/* Cloud Sync / Account Button */}
+          {onOpenAuth && (
+            <button
+              onClick={onOpenAuth}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold border transition active:scale-95 cursor-pointer ${
+                currentUserProfile
+                  ? 'bg-emerald-800/90 border-emerald-600/70 text-emerald-100 hover:bg-emerald-800'
+                  : 'bg-emerald-700 border-emerald-500 text-white hover:bg-emerald-600'
+              }`}
+              title={currentUserProfile ? `Terhubung: ${currentUserProfile.email} (${currentMasjidId})` : 'Masuk / Daftar Akun Cloud'}
+            >
+              {currentUserProfile ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <Cloud className="w-3.5 h-3.5 text-emerald-200" />
+                  <span className="max-w-[70px] sm:max-w-[100px] truncate text-[11px]">
+                    {currentMasjidId || 'Online'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <User className="w-3.5 h-3.5 text-white" />
+                  <span className="text-[11px]">Masuk</span>
+                </>
+              )}
+            </button>
+          )}
+
           {!isInstalled && isInstallable && (
             <button
               onClick={() => {
@@ -134,7 +175,34 @@ export const AndroidTopBar: React.FC<AndroidTopBarProps> = ({
                 className="fixed inset-0 z-40 bg-transparent"
                 onClick={() => setShowOverflowMenu(false)}
               />
-              <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200 py-2 text-xs font-medium animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-11 z-50 w-60 rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200 py-2 text-xs font-medium animate-in fade-in zoom-in-95 duration-100">
+                {/* Account & Multi-Masjid Header */}
+                {onOpenAuth && (
+                  <>
+                    <button
+                      onClick={() => {
+                        onOpenAuth();
+                        setShowOverflowMenu(false);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100/70 text-left transition border-b border-emerald-100 text-emerald-900"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Cloud className="w-4 h-4 text-emerald-700" />
+                        <div>
+                          <p className="font-bold text-xs">Akun & Multi-Masjid</p>
+                          <p className="text-[10px] text-emerald-700">
+                            {currentUserProfile ? `Kode: ${currentMasjidId || '-'}` : 'Belum Masuk Akun Cloud'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-600 bg-white px-2 py-0.5 rounded-full border border-emerald-200">
+                        {currentUserProfile ? 'Aktif' : 'Login'}
+                      </span>
+                    </button>
+                    <div className="my-1" />
+                  </>
+                )}
+
                 <button
                   onClick={() => {
                     setActiveTab('pengaturan');
@@ -217,6 +285,22 @@ export const AndroidTopBar: React.FC<AndroidTopBarProps> = ({
                   <MessageCircle className="w-4 h-4 text-emerald-600" />
                   <span>Created by Jamhur (WA)</span>
                 </a>
+
+                {currentUserProfile && onLogout && (
+                  <>
+                    <div className="my-1 border-t border-slate-100" />
+                    <button
+                      onClick={() => {
+                        onLogout();
+                        setShowOverflowMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50 text-left transition text-rose-600 font-medium"
+                    >
+                      <LogOut className="w-4 h-4 text-rose-500" />
+                      <span>Keluar Akun ({currentUserProfile.email})</span>
+                    </button>
+                  </>
+                )}
               </div>
             </>
           )}

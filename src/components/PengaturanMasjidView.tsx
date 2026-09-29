@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   Building2,
@@ -14,22 +14,46 @@ import {
   Phone,
   Mail,
   MapPin,
+  KeyRound,
+  Copy,
+  Check,
+  Sparkles,
+  Cloud,
 } from 'lucide-react';
-import { PengaturanMasjid } from '../types';
+import { PengaturanMasjid, UserProfile } from '../types';
 import { compressImageFile } from '../services/db';
 
 interface PengaturanMasjidViewProps {
   pengaturan: PengaturanMasjid;
   onSave: (data: PengaturanMasjid) => Promise<void>;
+  currentUserProfile?: UserProfile | null;
+  currentMasjidId?: string | null;
+  onOpenAuth?: () => void;
 }
 
 export const PengaturanMasjidView: React.FC<PengaturanMasjidViewProps> = ({
   pengaturan,
   onSave,
+  currentUserProfile,
+  currentMasjidId,
+  onOpenAuth,
 }) => {
   const [formData, setFormData] = useState<PengaturanMasjid>({ ...pengaturan });
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  useEffect(() => {
+    setFormData({ ...pengaturan });
+  }, [pengaturan]);
+
+  const handleCopyCode = () => {
+    if (currentMasjidId) {
+      navigator.clipboard.writeText(currentMasjidId);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2500);
+    }
+  };
 
   const handleChange = (field: keyof PengaturanMasjid, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -89,6 +113,76 @@ export const PengaturanMasjidView: React.FC<PengaturanMasjidViewProps> = ({
             <span>Pengaturan Berhasil Disimpan!</span>
           </div>
         )}
+      </div>
+
+      {/* Cloud & Multi-Masjid Identity Card */}
+      <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white p-5 rounded-3xl shadow-lg border border-emerald-800/60 relative overflow-hidden">
+        <div className="absolute -right-6 -bottom-6 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+        
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <Cloud className="w-3 h-3 text-emerald-300" />
+                Multi-Masjid Cloud Database
+              </span>
+              {currentUserProfile ? (
+                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Terhubung: {currentUserProfile.email}
+                </span>
+              ) : (
+                <span className="text-[11px] text-amber-300">Mode Lokal / Offline</span>
+              )}
+            </div>
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              {formData.namaMasjid || 'Masjid Belum Dinamai'}
+            </h2>
+            <p className="text-xs text-emerald-100/80 mt-0.5">
+              Bagikan Kode Masjid ini kepada Ketua DKM, Sekretaris, atau Bendahara lainnya agar dapat mengelola kas bersama secara real-time dari HP masing-masing.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {currentMasjidId ? (
+              <div className="flex items-center bg-black/30 border border-white/20 rounded-2xl p-1.5 pl-3">
+                <div className="text-left pr-3">
+                  <span className="block text-[10px] text-emerald-300 uppercase tracking-wider font-semibold">Kode Masjid Anda</span>
+                  <span className="text-sm font-mono font-bold text-amber-300">{currentMasjidId}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyCode}
+                  className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-medium text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  title="Salin Kode Masjid"
+                >
+                  {copiedCode ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-white" />
+                      <span>Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-white" />
+                      <span>Salin Kode</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : null}
+
+            {onOpenAuth && (
+              <button
+                type="button"
+                onClick={onOpenAuth}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-medium text-xs flex items-center gap-1.5 transition-all border border-white/20 cursor-pointer"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-emerald-300" />
+                <span>{currentUserProfile ? 'Ganti Masjid / Akun' : 'Daftar / Masuk Akun'}</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
