@@ -31,9 +31,24 @@ import {
   KategoriPemasukan,
   KategoriPengeluaran,
 } from '../types';
-import { dbService } from './db';
+import {
+  dbService,
+  DEFAULT_KATEGORI_PEMASUKAN,
+  DEFAULT_KATEGORI_PENGELUARAN,
+} from './db';
 
 const googleProvider = new GoogleAuthProvider();
+
+// Clean any undefined values which Firestore throws error on
+function sanitizeForFirestore<T extends Record<string, any>>(obj: T): T {
+  const result: any = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val !== undefined) {
+      result[key] = val;
+    }
+  }
+  return result;
+}
 
 export class CloudService {
   private currentMasjidId: string | null = null;
@@ -80,7 +95,7 @@ export class CloudService {
 
           await setDoc(userRef, newProfile);
 
-          // Also ensure initial masjid document exists
+          // Also ensure initial masjid document exists with independent default categories
           try {
             const masjidRef = doc(db, 'masjids', defaultMasjidId);
             const mSnap = await getDoc(masjidRef);
@@ -91,6 +106,8 @@ export class CloudService {
                 ownerId: firebaseUser.uid,
                 ownerEmail: firebaseUser.email || '',
                 createdAt: new Date().toISOString(),
+                kategoriPemasukan: DEFAULT_KATEGORI_PEMASUKAN,
+                kategoriPengeluaran: DEFAULT_KATEGORI_PENGELUARAN,
               };
               await setDoc(masjidRef, initialMasjid);
             }
@@ -108,7 +125,7 @@ export class CloudService {
     });
   }
 
-  // Register with Email & Password (User explicitly requested!)
+  // Register with Email & Password
   public async registerWithEmail(
     email: string,
     pass: string,
@@ -138,7 +155,7 @@ export class CloudService {
       handleFirestoreError(err, OperationType.CREATE, userPath);
     }
 
-    // Save initial masjid record
+    // Save initial masjid record with independent categories
     const masjidPath = `masjids/${masjidId}`;
     try {
       const initialMasjid: MasjidTenant = {
@@ -147,6 +164,8 @@ export class CloudService {
         ownerId: cred.user.uid,
         ownerEmail: cred.user.email || email,
         createdAt: new Date().toISOString(),
+        kategoriPemasukan: DEFAULT_KATEGORI_PEMASUKAN,
+        kategoriPengeluaran: DEFAULT_KATEGORI_PENGELUARAN,
       };
       await setDoc(doc(db, 'masjids', masjidId), initialMasjid);
     } catch (err) {
@@ -198,7 +217,13 @@ export class CloudService {
   // --- FIRESTORE REAL-TIME SYNC FOR MASJID ---
 
   public unsubscribeAllListeners() {
-    this.unsubscribeListeners.forEach((unsub) => unsub());
+    this.unsubscribeListeners.forEach((unsub) => {
+      try {
+        unsub();
+      } catch (e) {
+        // ignore
+      }
+    });
     this.unsubscribeListeners = [];
   }
 
@@ -239,6 +264,36 @@ export class CloudService {
     return unsub;
   }
 
+  // Real-time listener for Categories (Separate and isolated per masjid)
+  public subscribeKategori(
+    masjidId: string,
+    callback: (inKat: KategoriPemasukan[], outKat: KategoriPengeluaran[]) => void
+  ): () => void {
+    const path = `masjids/${masjidId}`;
+    const unsub = onSnapshot(
+      doc(db, 'masjids', masjidId),
+      (snap) => {
+        if (snap.exists()) {
+          const tenant = snap.data() as MasjidTenant;
+          const inKat = Array.isArray(tenant.kategoriPemasukan) && tenant.kategoriPemasukan.length > 0
+            ? tenant.kategoriPemasukan
+            : DEFAULT_KATEGORI_PEMASUKAN;
+          const outKat = Array.isArray(tenant.kategoriPengeluaran) && tenant.kategoriPengeluaran.length > 0
+            ? tenant.kategoriPengeluaran
+            : DEFAULT_KATEGORI_PENGELUARAN;
+          callback(inKat, outKat);
+        } else {
+          callback(DEFAULT_KATEGORI_PEMASUKAN, DEFAULT_KATEGORI_PENGELUARAN);
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, path);
+      }
+    );
+    this.unsubscribeListeners.push(unsub);
+    return unsub;
+  }
+
   // Real-time listener for Pemasukan
   public subscribePemasukan(
     masjidId: string,
@@ -251,7 +306,14 @@ export class CloudService {
       q,
       (snapshot) => {
         const items: TransaksiPemasukan[] = [];
-        snapshot.forEach((d) => items.push(d.data() as TransaksiPemasukan));
+        snapshot.forEach((d) => {
+          const raw = d.data() as TransaksiPemasukan;
+          // Ensure lampiranFoto is at least empty string if not present
+          items.push({
+            ...raw,
+            lampiranFoto: raw.lampiranFoto || '',
+          });
+        });
         // Sort newest first
         items.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
         callback(items);
@@ -276,7 +338,13 @@ export class CloudService {
       q,
       (snapshot) => {
         const items: TransaksiPengeluaran[] = [];
-        snapshot.forEach((d) => items.push(d.data() as TransaksiPengeluaran));
+        snapshot.forEach((d) => {
+          const raw = d.data() as TransaksiPengeluaran;
+          items.push({
+            ...raw,
+            lampiranFoto: raw.lampiranFoto || '',
+          });
+        });
         // Sort newest first
         items.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
         callback(items);
@@ -318,11 +386,37 @@ export class CloudService {
     try {
       await updateDoc(doc(db, 'masjids', masjidId), {
         namaMasjid: settings.namaMasjid,
-        pengaturan: settings,
+        pengaturan: sanitizeForFirestore(settings),
         updatedAt: new Date().toISOString(),
       });
-      // also sync to local storage for offline resilience
+      // also sync to local storage
       await dbService.savePengaturan(settings);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  }
+
+  public async saveKategoriPemasukan(masjidId: string, items: KategoriPemasukan[]): Promise<void> {
+    const path = `masjids/${masjidId}`;
+    try {
+      await updateDoc(doc(db, 'masjids', masjidId), {
+        kategoriPemasukan: items,
+        updatedAt: new Date().toISOString(),
+      });
+      await dbService.saveKategoriPemasukan(items, masjidId);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  }
+
+  public async saveKategoriPengeluaran(masjidId: string, items: KategoriPengeluaran[]): Promise<void> {
+    const path = `masjids/${masjidId}`;
+    try {
+      await updateDoc(doc(db, 'masjids', masjidId), {
+        kategoriPengeluaran: items,
+        updatedAt: new Date().toISOString(),
+      });
+      await dbService.saveKategoriPengeluaran(items, masjidId);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
@@ -331,7 +425,13 @@ export class CloudService {
   public async addOrUpdatePemasukan(masjidId: string, item: TransaksiPemasukan): Promise<void> {
     const path = `masjids/${masjidId}/pemasukan/${item.id}`;
     try {
-      await setDoc(doc(db, 'masjids', masjidId, 'pemasukan', item.id), item);
+      // Guarantee lampiranFoto is never undefined
+      const sanitized = sanitizeForFirestore({
+        ...item,
+        masjidId,
+        lampiranFoto: item.lampiranFoto || '',
+      });
+      await setDoc(doc(db, 'masjids', masjidId, 'pemasukan', item.id), sanitized);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
@@ -349,7 +449,13 @@ export class CloudService {
   public async addOrUpdatePengeluaran(masjidId: string, item: TransaksiPengeluaran): Promise<void> {
     const path = `masjids/${masjidId}/pengeluaran/${item.id}`;
     try {
-      await setDoc(doc(db, 'masjids', masjidId, 'pengeluaran', item.id), item);
+      // Guarantee lampiranFoto is never undefined
+      const sanitized = sanitizeForFirestore({
+        ...item,
+        masjidId,
+        lampiranFoto: item.lampiranFoto || '',
+      });
+      await setDoc(doc(db, 'masjids', masjidId, 'pengeluaran', item.id), sanitized);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
@@ -367,7 +473,7 @@ export class CloudService {
   public async addOrUpdatePengurus(masjidId: string, item: Pengurus): Promise<void> {
     const path = `masjids/${masjidId}/pengurus/${item.id}`;
     try {
-      await setDoc(doc(db, 'masjids', masjidId, 'pengurus', item.id), item);
+      await setDoc(doc(db, 'masjids', masjidId, 'pengurus', item.id), sanitizeForFirestore(item));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }

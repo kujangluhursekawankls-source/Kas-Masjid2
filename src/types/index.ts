@@ -111,6 +111,8 @@ export interface MasjidTenant {
   ownerEmail?: string;
   createdAt: string;
   pengaturan?: PengaturanMasjid;
+  kategoriPemasukan?: KategoriPemasukan[];
+  kategoriPengeluaran?: KategoriPengeluaran[];
 }
 
 export type ActiveTab = 

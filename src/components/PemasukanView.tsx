@@ -151,7 +151,7 @@ export const PemasukanView: React.FC<PemasukanViewProps> = ({
       uraian: formUraian.trim(),
       nominal: Number(formNominal),
       namaPetugas: formPetugas.trim() || pengaturan.namaBendahara || 'Petugas Kas',
-      lampiranFoto: formFoto,
+      lampiranFoto: formFoto || '',
       createdAt: editingItem ? editingItem.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -570,10 +570,10 @@ export const PemasukanView: React.FC<PemasukanViewProps> = ({
                 </div>
               </div>
 
-              {/* Lampiran Bukti Foto */}
+              {/* Lampiran Bukti Foto (Opsional) */}
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Lampiran Bukti Foto
+                  Lampiran Bukti Foto <span className="text-[11px] font-normal text-slate-400">(Opsional - Tanpa foto tetap tersimpan)</span>
                 </label>
                 <div className="flex items-center gap-3">
                   <label className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium">

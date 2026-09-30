@@ -197,16 +197,20 @@ export const MasterKategoriView: React.FC<MasterKategoriViewProps> = ({
             </button>
           </div>
 
-          {/* Quick populate button if database categories are empty */}
-          {kategoriPemasukan.length === 0 && kategoriPengeluaran.length === 0 && (
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-800 text-[11px] font-semibold border border-emerald-200/80">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              Tersimpan di Cloud Akun Masjid Anda
+            </span>
             <button
               onClick={handlePopulateStandardCategories}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-semibold transition"
+              title="Isi otomatis dengan pos kategori standar masjid"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition"
             >
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>Gunakan Kategori Standar Masjid</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>Muat Kategori Standar</span>
             </button>
-          )}
+          </div>
         </div>
 
         {/* Search */}

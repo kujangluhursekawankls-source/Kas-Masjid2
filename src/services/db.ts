@@ -26,6 +26,27 @@ export const DEFAULT_PENGATURAN: PengaturanMasjid = {
   atasNamaRekening: '',
 };
 
+export const DEFAULT_KATEGORI_PEMASUKAN: KategoriPemasukan[] = [
+  { id: 'kat_in_1', nama: 'Kotak Amal Shalat Jumat', keterangan: 'Infaq dari kotak tromol / keliling shalat Jumat', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_in_2', nama: 'Kotak Amal Harian / Tromol', keterangan: 'Kotak infaq tetap di dalam ruang masjid', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_in_3', nama: 'Infaq Tarawih & Ramadhan', keterangan: 'Penerimaan khusus bulan suci Ramadhan', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_in_4', nama: 'Zakat Maal & Zakat Fitrah', keterangan: 'Penerimaan zakat titipan jamaah', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_in_5', nama: 'Wakaf Pembangunan Masjid', keterangan: 'Donasi perluasan atau renovasi fisik', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_in_6', nama: 'Donatur Tetap / Bulanan', keterangan: 'Sumbangan rutin dari donatur terdaftar', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_in_7', nama: 'Infaq Anak Yatim & Dhuafa', keterangan: 'Dana titipan santunan sosial', createdAt: '2025-01-01T00:00:00.000Z' },
+];
+
+export const DEFAULT_KATEGORI_PENGELUARAN: KategoriPengeluaran[] = [
+  { id: 'kat_out_1', nama: 'Operasional Listrik & PLN', keterangan: 'Tagihan listrik dan token masjid', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_out_2', nama: 'Operasional Air & PDAM', keterangan: 'Tagihan air tempat wudhu dan toilet', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_out_3', nama: 'Honor Khatib & Ustadz', keterangan: 'Bisyarah khatib Jumat dan penceramah kajian', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_out_4', nama: 'Bisyarah Marbot & Kebersihan', keterangan: 'Uang lelah penjaga dan kebersihan masjid', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_out_5', nama: 'Perbaikan & Renovasi', keterangan: 'Biaya pemeliharaan AC, sound system, cat, atap', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_out_6', nama: 'Santunan Yatim & Kaum Dhuafa', keterangan: 'Penyaluran bantuan sosial', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_out_7', nama: 'Konsumsi Pengajian & Takjil', keterangan: 'Snack kajian, buka puasa bersama, rapat', createdAt: '2025-01-01T00:00:00.000Z' },
+  { id: 'kat_out_8', nama: 'Perlengkapan & Kebersihan', keterangan: 'Sapu, pel, sabun cuci tangan, karbol, tisu', createdAt: '2025-01-01T00:00:00.000Z' },
+];
+
 class DatabaseService {
   private db: IDBDatabase | null = null;
   private isReadyPromise: Promise<void>;
@@ -170,20 +191,38 @@ class DatabaseService {
   }
 
   // --- Kategori Pemasukan ---
-  public async getKategoriPemasukan(): Promise<KategoriPemasukan[]> {
-    return this.getAllFromStore<KategoriPemasukan>('kategoriPemasukan');
+  public async getKategoriPemasukan(masjidId?: string): Promise<KategoriPemasukan[]> {
+    const storeKey = masjidId ? `kategoriPemasukan_${masjidId}` : 'kategoriPemasukan';
+    const local = this.getFromLocalStorage<KategoriPemasukan[]>(storeKey, []);
+    if (local && local.length > 0) return local;
+
+    const fromIdb = await this.getAllFromStore<KategoriPemasukan>('kategoriPemasukan');
+    if (fromIdb && fromIdb.length > 0) return fromIdb;
+
+    return DEFAULT_KATEGORI_PEMASUKAN;
   }
 
-  public async saveKategoriPemasukan(items: KategoriPemasukan[]): Promise<void> {
+  public async saveKategoriPemasukan(items: KategoriPemasukan[], masjidId?: string): Promise<void> {
+    const storeKey = masjidId ? `kategoriPemasukan_${masjidId}` : 'kategoriPemasukan';
+    this.saveToLocalStorage(storeKey, items);
     await this.saveAllToStore('kategoriPemasukan', items);
   }
 
   // --- Kategori Pengeluaran ---
-  public async getKategoriPengeluaran(): Promise<KategoriPengeluaran[]> {
-    return this.getAllFromStore<KategoriPengeluaran>('kategoriPengeluaran');
+  public async getKategoriPengeluaran(masjidId?: string): Promise<KategoriPengeluaran[]> {
+    const storeKey = masjidId ? `kategoriPengeluaran_${masjidId}` : 'kategoriPengeluaran';
+    const local = this.getFromLocalStorage<KategoriPengeluaran[]>(storeKey, []);
+    if (local && local.length > 0) return local;
+
+    const fromIdb = await this.getAllFromStore<KategoriPengeluaran>('kategoriPengeluaran');
+    if (fromIdb && fromIdb.length > 0) return fromIdb;
+
+    return DEFAULT_KATEGORI_PENGELUARAN;
   }
 
-  public async saveKategoriPengeluaran(items: KategoriPengeluaran[]): Promise<void> {
+  public async saveKategoriPengeluaran(items: KategoriPengeluaran[], masjidId?: string): Promise<void> {
+    const storeKey = masjidId ? `kategoriPengeluaran_${masjidId}` : 'kategoriPengeluaran';
+    this.saveToLocalStorage(storeKey, items);
     await this.saveAllToStore('kategoriPengeluaran', items);
   }
 

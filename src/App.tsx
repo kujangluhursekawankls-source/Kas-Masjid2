@@ -14,7 +14,12 @@ import {
   PengaturanMasjid,
   UserProfile,
 } from './types';
-import { dbService, DEFAULT_PENGATURAN } from './services/db';
+import {
+  dbService,
+  DEFAULT_PENGATURAN,
+  DEFAULT_KATEGORI_PEMASUKAN,
+  DEFAULT_KATEGORI_PENGELUARAN,
+} from './services/db';
 import { cloudService } from './services/cloudService';
 import { useOnlineStatus, usePWAInstall } from './hooks/usePWA';
 import { AndroidDeviceShell } from './components/AndroidDeviceShell';
@@ -132,6 +137,14 @@ export default function App() {
       return;
     }
 
+    // Subscribe to Master Kategori in Cloud (Isolated per masjid)
+    const unsubKategori = cloudService.subscribeKategori(currentMasjidId, (cloudInKat, cloudOutKat) => {
+      setKategoriPemasukan(cloudInKat);
+      setKategoriPengeluaran(cloudOutKat);
+      dbService.saveKategoriPemasukan(cloudInKat, currentMasjidId);
+      dbService.saveKategoriPengeluaran(cloudOutKat, currentMasjidId);
+    });
+
     // Subscribe to Mosque Settings in Cloud
     const unsubPengaturan = cloudService.subscribePengaturan(currentMasjidId, (cloudSettings) => {
       setPengaturan(cloudSettings);
@@ -157,6 +170,7 @@ export default function App() {
     });
 
     return () => {
+      unsubKategori();
       unsubPengaturan();
       unsubIn();
       unsubOut();
@@ -200,12 +214,20 @@ export default function App() {
 
   const handleSaveKategoriPemasukan = async (items: KategoriPemasukan[]) => {
     setKategoriPemasukan(items);
-    await dbService.saveKategoriPemasukan(items);
+    await dbService.saveKategoriPemasukan(items, currentMasjidId || undefined);
+
+    if (currentMasjidId && isOnline) {
+      await cloudService.saveKategoriPemasukan(currentMasjidId, items);
+    }
   };
 
   const handleSaveKategoriPengeluaran = async (items: KategoriPengeluaran[]) => {
     setKategoriPengeluaran(items);
-    await dbService.saveKategoriPengeluaran(items);
+    await dbService.saveKategoriPengeluaran(items, currentMasjidId || undefined);
+
+    if (currentMasjidId && isOnline) {
+      await cloudService.saveKategoriPengeluaran(currentMasjidId, items);
+    }
   };
 
   const handleSavePengaturan = async (data: PengaturanMasjid) => {
@@ -217,12 +239,20 @@ export default function App() {
     }
   };
 
-  // Logout handler
+  // Logout handler (clean reset so another account never sees or collides with previous account's categories)
   const handleLogout = async () => {
     await cloudService.logoutUser();
     setCurrentUserProfile(null);
     setCurrentMasjidId(null);
     setWelcomeBanner(null);
+
+    // Reset view states to fresh defaults
+    setPemasukan([]);
+    setPengeluaran([]);
+    setPengurus([]);
+    setKategoriPemasukan(DEFAULT_KATEGORI_PEMASUKAN);
+    setKategoriPengeluaran(DEFAULT_KATEGORI_PENGELUARAN);
+    setPengaturan(DEFAULT_PENGATURAN);
   };
 
   // Quick Action navigation to add income/expense
