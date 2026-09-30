@@ -15,12 +15,15 @@ import {
   Sparkles,
   ChevronRight,
   ShieldCheck,
+  Lock,
+  LogIn,
 } from 'lucide-react';
 import {
   TransaksiPemasukan,
   TransaksiPengeluaran,
   PengaturanMasjid,
   ActiveTab,
+  UserProfile,
 } from '../types';
 import { formatRupiah, formatTanggalIndo } from '../services/db';
 
@@ -31,6 +34,8 @@ interface DashboardViewProps {
   setActiveTab: (tab: ActiveTab) => void;
   onOpenAddPemasukan: () => void;
   onOpenAddPengeluaran: () => void;
+  currentUserProfile?: UserProfile | null;
+  onOpenAuth?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -40,6 +45,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   setActiveTab,
   onOpenAddPemasukan,
   onOpenAddPengeluaran,
+  currentUserProfile,
+  onOpenAuth,
 }) => {
   // Calculations
   const totalPemasukan = useMemo(
@@ -216,6 +223,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <p className="text-xs text-emerald-100/90 mt-1 line-clamp-2">
             {pengaturan.alamat || 'Laporan keuangan transparan, akuntabel, dan siap cetak kuitansi PDF.'}
           </p>
+        </div>
+      )}
+
+      {/* Banner / Notice saat Log Out (Kondisi 0 & Anti Bocor Data) */}
+      {!currentUserProfile && (
+        <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 shadow-sm animate-fade-in">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="font-bold text-xs sm:text-sm text-amber-950">
+                Mode Kas Terkunci (Kondisi 0)
+              </h4>
+              <p className="text-[11px] text-amber-800/90 mt-0.5 leading-relaxed">
+                Anda sedang dalam posisi keluar (log out). Data kas dikosongkan (Rp 0) untuk menjaga privasi & mencegah kebocoran data. Silakan masuk untuk membuka pembukuan kas masjid Anda.
+              </p>
+            </div>
+          </div>
+          {onOpenAuth && (
+            <button
+              onClick={onOpenAuth}
+              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 flex-shrink-0 cursor-pointer"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Masuk ke Akun Masjid</span>
+            </button>
+          )}
         </div>
       )}
 

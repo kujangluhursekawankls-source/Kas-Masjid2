@@ -35,14 +35,15 @@ export const PanduanView: React.FC = () => {
   const guides = [
     {
       id: 'akun-cloud',
-      title: '1. Pendaftaran Akun Cloud, Login & Lupa Password',
+      title: '1. Pendaftaran Akun, Menu Logout & Keamanan Kondisi 0',
       icon: Cloud,
       color: 'text-sky-600 bg-sky-50',
-      badge: 'Fitur Cloud Terbaru',
+      badge: 'Anti Kebocoran Data',
       steps: [
         'Tekan tombol "Masuk" di pojok kanan atas layar aplikasi.',
-        'Untuk membuat akun masjid baru: Pilih tab "Daftar Baru", masukkan Nama Masjid, Nama Pengurus, Email, dan Kata Sandi (minimal 6 karakter). Atau gunakan tombol "Masuk Cepat dengan Akun Google (1-Klik)" yang langsung aktif tanpa perlu setting apapun.',
-        'Sistem otomatis membuatkan database online tersendiri dan Kode Masjid unik (misal: MSJ-A1B2C3).',
+        'Untuk membuat akun baru: Pilih tab "Daftar Baru", masukkan Nama Masjid, Nama Pengurus, Email, dan Kata Sandi. Atau gunakan tombol "Masuk Cepat dengan Akun Google (1-Klik)" yang langsung aktif tanpa perlu setting apapun.',
+        'Menu Bersih Saat Login: Begitu Anda sudah berhasil masuk ke aplikasi, menu akun tidak lagi menampilkan formulir login/daftar yang membingungkan, melainkan hanya menampilkan ringkasan profil aktif dan tombol resmi "Keluar dari Akun (Log Out)".',
+        'Keamanan Kondisi 0 (Zero-Leakage): Begitu Anda menekan tombol "Log Out", sistem otomatis membersihkan memori perangkat dan mengunci beranda luar ke Kondisi 0 (Saldo Rp 0, 0 Transaksi). Hal ini menjamin pembukuan kas masjid Anda aman dan tidak bocor saat HP/laptop dilihat orang lain.',
         'Fitur Lupa Password: Jika Anda lupa kata sandi akun, pilih tab "Masuk" lalu klik tulisan "Lupa Kata Sandi?". Masukkan email Anda dan tekan "Kirim Link Reset Kata Sandi". Tautan untuk membuat sandi baru akan langsung dikirim ke email Anda.',
       ],
     },
@@ -145,6 +146,14 @@ export const PanduanView: React.FC = () => {
   ];
 
   const faqs = [
+    {
+      q: 'Mengapa saat posisi sudah login hanya ada menu Log Out (Keluar)?',
+      a: 'Agar tampilan bersih dan tidak membingungkan pengurus. Saat Anda sudah masuk, aplikasi memusatkan perhatian Anda pada pembukuan kas. Menu login dan pendaftaran disembunyikan dan digantikan oleh profil aktif serta tombol "Keluar dari Akun (Log Out)" yang jelas.',
+    },
+    {
+      q: 'Mengapa saat logout beranda langsung ke kondisi 0 (Saldo Rp 0)?',
+      a: 'Ini adalah fitur keamanan Anti Kebocoran Data (Zero-Leakage Security). Saat Anda menekan Log Out, seluruh memori dan tampilan kas langsung ditutup ke kondisi Rp 0. Hal ini memastikan tidak ada orang lain yang bisa mengintip saldo, riwayat uang kas, atau data masjid Anda saat perangkat sedang ditinggalkan atau dipinjam orang lain.',
+    },
     {
       q: 'Apakah pos kategori kas saya bisa tertukar dengan masjid lain?',
       a: 'Sama sekali tidak. Setiap akun masjid memiliki ruang penyimpanan kategori mandiri di cloud database Google Firestore. Kategori yang Anda tambahkan, ubah, atau hapus hanya berlaku untuk masjid Anda dan tidak akan pernah bertabrakan atau terlihat oleh masjid lain.',

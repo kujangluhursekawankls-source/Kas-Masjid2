@@ -163,6 +163,35 @@ class DatabaseService {
     }
   }
 
+  public async clearAllLocalData(): Promise<void> {
+    await this.isReady();
+    if (this.db) {
+      const storeNames = ['pemasukan', 'pengeluaran', 'pengurus', 'kategoriPemasukan', 'kategoriPengeluaran', 'pengaturan'];
+      try {
+        const tx = this.db.transaction(storeNames, 'readwrite');
+        for (const s of storeNames) {
+          if (this.db.objectStoreNames.contains(s)) {
+            tx.objectStore(s).clear();
+          }
+        }
+      } catch (e) {
+        console.warn('IDB clear error:', e);
+      }
+    }
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('km_') || k.startsWith('kategori'))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch (e) {
+      console.warn('LocalStorage clear error:', e);
+    }
+  }
+
   // --- Pemasukan ---
   public async getPemasukan(): Promise<TransaksiPemasukan[]> {
     return this.getAllFromStore<TransaksiPemasukan>('pemasukan');

@@ -113,22 +113,50 @@ export default function App() {
 
   // Listen to Firebase Auth state
   useEffect(() => {
-    loadLocalData();
-
-    const unsubscribeAuth = cloudService.onAuthChange((user, profile) => {
-      setCurrentUserProfile(profile);
-      if (profile && profile.masjidId) {
+    const unsubscribeAuth = cloudService.onAuthChange(async (user, profile) => {
+      if (user && profile && profile.masjidId) {
+        setCurrentUserProfile(profile);
         setCurrentMasjidId(profile.masjidId);
+        // Load local cache if available while real-time listeners initialize
+        try {
+          const [inData, outData, pengurusData, katInData, katOutData, pengaturanData] =
+            await Promise.all([
+              dbService.getPemasukan(),
+              dbService.getPengeluaran(),
+              dbService.getPengurus(),
+              dbService.getKategoriPemasukan(profile.masjidId),
+              dbService.getKategoriPengeluaran(profile.masjidId),
+              dbService.getPengaturan(),
+            ]);
+
+          setPemasukan(inData);
+          setPengeluaran(outData);
+          setPengurus(pengurusData);
+          setKategoriPemasukan(katInData);
+          setKategoriPengeluaran(katOutData);
+          setPengaturan(pengaturanData);
+        } catch (e) {
+          console.warn('Error loading cached data for user:', e);
+        }
       } else {
+        // User logged out or unauthenticated -> CONDITION 0 (NO DATA LEAK)
+        setCurrentUserProfile(null);
         setCurrentMasjidId(null);
+        setPemasukan([]);
+        setPengeluaran([]);
+        setPengurus([]);
+        setKategoriPemasukan([]);
+        setKategoriPengeluaran([]);
+        setPengaturan(DEFAULT_PENGATURAN);
       }
+      setIsLoading(false);
     });
 
     return () => {
       unsubscribeAuth();
       cloudService.unsubscribeAllListeners();
     };
-  }, [loadLocalData]);
+  }, []);
 
   // Subscribe to real-time Cloud Firestore updates when logged in to a Masjid
   useEffect(() => {
@@ -239,19 +267,20 @@ export default function App() {
     }
   };
 
-  // Logout handler (clean reset so another account never sees or collides with previous account's categories)
+  // Logout handler (clean reset to condition 0 so there is no data leakage)
   const handleLogout = async () => {
     await cloudService.logoutUser();
+    await dbService.clearAllLocalData();
     setCurrentUserProfile(null);
     setCurrentMasjidId(null);
     setWelcomeBanner(null);
 
-    // Reset view states to fresh defaults
+    // Reset view states to complete condition 0
     setPemasukan([]);
     setPengeluaran([]);
     setPengurus([]);
-    setKategoriPemasukan(DEFAULT_KATEGORI_PEMASUKAN);
-    setKategoriPengeluaran(DEFAULT_KATEGORI_PENGELUARAN);
+    setKategoriPemasukan([]);
+    setKategoriPengeluaran([]);
     setPengaturan(DEFAULT_PENGATURAN);
   };
 
@@ -351,6 +380,11 @@ export default function App() {
               setActiveTab={setActiveTab}
               onOpenAddPemasukan={triggerAddPemasukan}
               onOpenAddPengeluaran={triggerAddPengeluaran}
+              currentUserProfile={currentUserProfile}
+              onOpenAuth={() => {
+                setAuthDefaultMode('login');
+                setIsAuthModalOpen(true);
+              }}
             />
           )}
 
@@ -511,10 +545,12 @@ export default function App() {
           onClose={() => setIsAuthModalOpen(false)}
           currentUserProfile={currentUserProfile}
           defaultMode={authDefaultMode}
+          onLogout={handleLogout}
+          pengaturan={pengaturan}
           onSuccess={(profile) => {
             if (profile) {
               setWelcomeBanner(`Selamat datang di database ${profile.masjidId}!`);
-              setActiveTab('pengaturan');
+              setActiveTab('dashboard');
             }
           }}
         />

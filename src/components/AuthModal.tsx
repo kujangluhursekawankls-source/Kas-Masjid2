@@ -11,14 +11,15 @@ import {
   ShieldCheck,
   AlertCircle,
   Loader2,
-  Sparkles,
-  Layers,
   ArrowLeft,
   CheckCircle,
   ExternalLink,
+  LogOut,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { cloudService } from '../services/cloudService';
-import { UserProfile } from '../types';
+import { UserProfile, PengaturanMasjid } from '../types';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ interface AuthModalProps {
   currentUserProfile: UserProfile | null;
   onSuccess: (profile: UserProfile | null) => void;
   defaultMode?: 'login' | 'register' | 'join';
+  onLogout?: () => Promise<void>;
+  pengaturan?: PengaturanMasjid;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -34,19 +37,46 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   currentUserProfile,
   onSuccess,
   defaultMode = 'login',
+  onLogout,
+  pengaturan,
 }) => {
-  const [mode, setMode] = useState<'login' | 'register' | 'join' | 'forgot'>(defaultMode);
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(
+    defaultMode === 'join' ? 'login' : defaultMode
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [namaMasjid, setNamaMasjid] = useState('');
-  const [kodeMasjid, setKodeMasjid] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isOperationNotAllowed, setIsOperationNotAllowed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [copiedKode, setCopiedKode] = useState(false);
 
   if (!isOpen) return null;
+
+  // Logout handler when user is already logged in
+  const handleLogoutAction = async () => {
+    setLoading(true);
+    try {
+      if (onLogout) {
+        await onLogout();
+      } else {
+        await cloudService.logoutUser();
+      }
+      onClose();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopyKode = (kode: string) => {
+    navigator.clipboard.writeText(kode);
+    setCopiedKode(true);
+    setTimeout(() => setCopiedKode(false), 2000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,17 +120,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setSuccessMsg(
           `Tautan reset kata sandi telah dikirim ke ${email}. Silakan periksa Kotak Masuk (Inbox) atau folder Spam email Anda.`
         );
-      } else if (mode === 'join') {
-        if (!currentUserProfile) {
-          throw new Error('Silakan masuk terlebih dahulu sebelum menghubungkan kode masjid.');
-        }
-        if (!kodeMasjid.trim()) {
-          throw new Error('Masukkan Kode Masjid yang valid.');
-        }
-
-        await cloudService.switchOrJoinMasjid(currentUserProfile.id, kodeMasjid.trim());
-        onSuccess(null);
-        onClose();
       }
     } catch (err: unknown) {
       console.error('Auth error:', err);
@@ -109,7 +128,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (err.message.includes('auth/operation-not-allowed')) {
           setIsOperationNotAllowed(true);
           message =
-            'Pendaftaran Email/Password di Firebase belum diaktifkan (Status: Disabled). Anda bisa langsung klik tombol Google di bawah ini (1-Klik langsung masuk tanpa ribet!), atau aktifkan Email/Password di Firebase Console.';
+            'Pendaftaran Email/Password di Firebase belum diaktifkan (Status: Disabled). Anda bisa langsung klik tombol Google di atas (1-Klik langsung masuk), atau aktifkan Email/Password di Firebase Console.';
         } else if (err.message.includes('auth/email-already-in-use')) {
           message = 'Email ini sudah terdaftar. Silakan pilih tab "Masuk" di atas.';
         } else if (
@@ -149,6 +168,125 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  // ========================================================
+  // RENDER 1: JIKA USER SUDAH LOGIN -> HANYA TAMPILKAN MENU LOG OUT
+  // ========================================================
+  if (currentUserProfile) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-sm animate-fade-in">
+        <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-emerald-100 flex flex-col">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-800 to-teal-800 px-6 py-5 text-white flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/20">
+                <ShieldCheck className="w-5 h-5 text-emerald-200" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">Akun Pengurus Masjid</h2>
+                <p className="text-xs text-emerald-100">Sesi Aktif Terhubung</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Body: Info Akun & Hanya Menu Log Out */}
+          <div className="p-6 space-y-5">
+            {/* Status Online Banner */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="font-semibold text-emerald-900">Terhubung ke Cloud Database</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-200/60 text-emerald-800 font-bold text-[10px]">
+                ONLINE
+              </span>
+            </div>
+
+            {/* Profile Info Card */}
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-700 text-white font-bold text-lg flex items-center justify-center shadow-sm">
+                  {currentUserProfile.displayName
+                    ? currentUserProfile.displayName.charAt(0).toUpperCase()
+                    : 'P'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-sm text-slate-900 truncate">
+                    {currentUserProfile.displayName || 'Pengurus DKM'}
+                  </h3>
+                  <p className="text-xs text-slate-500 truncate">{currentUserProfile.email}</p>
+                  <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                    {currentUserProfile.role === 'ketua' ? 'Ketua DKM' : 'Bendahara / Pengurus Kas'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Detail Masjid & Kode */}
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Masjid Aktif:</span>
+                  <span className="font-bold text-slate-800 truncate max-w-[180px]">
+                    {pengaturan?.namaMasjid || 'Masjid Jami'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-slate-500">Kode Masjid:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-900">
+                      {currentUserProfile.masjidId}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyKode(currentUserProfile.masjidId)}
+                      className="p-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 transition"
+                      title="Salin Kode Masjid"
+                    >
+                      {copiedKode ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Catatan Keamanan Logout */}
+            <div className="text-[11px] text-slate-500 bg-amber-50/70 p-3 rounded-xl border border-amber-200/60 leading-relaxed">
+              💡 <b>Keamanan Kas:</b> Saat Anda keluar (log out), beranda aplikasi akan otomatis kembali ke <b>kondisi 0 (Rp 0)</b> untuk mencegah kebocoran data.
+            </div>
+
+            {/* SATU-SATUNYA MENU AKSI KETIKA LOGIN: TOMBOL LOG OUT */}
+            <button
+              type="button"
+              onClick={handleLogoutAction}
+              disabled={loading}
+              className="w-full py-3.5 px-4 rounded-2xl font-bold text-sm text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/25 flex items-center justify-center gap-2.5 transition active:scale-[0.99] cursor-pointer disabled:opacity-60"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Memproses Keluar...
+                </>
+              ) : (
+                <>
+                  <LogOut className="w-4 h-4" />
+                  Keluar dari Akun (Log Out)
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ========================================================
+  // RENDER 2: JIKA POSISI BELUM LOGIN -> TAMPILKAN LOGIN / DAFTAR
+  // ========================================================
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-sm animate-fade-in">
       <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-emerald-100 flex flex-col max-h-[92vh]">
@@ -160,7 +298,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold">
-                {mode === 'forgot' ? 'Lupa Kata Sandi' : 'Akun & Multi-Masjid'}
+                {mode === 'forgot' ? 'Lupa Kata Sandi' : 'Masuk Akun Kas Masjid'}
               </h2>
               <p className="text-xs text-emerald-100">
                 {mode === 'forgot' ? 'Pemulihan Akun Pengurus' : 'Sinkronisasi Cloud Real-Time'}
@@ -169,7 +307,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -178,23 +316,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Tab Selection */}
         {mode !== 'forgot' ? (
           <div className="flex border-b border-slate-100 bg-slate-50/70 p-1.5 gap-1 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('register');
-                setErrorMsg(null);
-                setSuccessMsg(null);
-                setIsOperationNotAllowed(false);
-              }}
-              className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                mode === 'register'
-                  ? 'bg-white text-emerald-800 shadow-sm border border-emerald-100/50'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              Daftar Baru
-            </button>
             <button
               type="button"
               onClick={() => {
@@ -212,25 +333,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <LogIn className="w-3.5 h-3.5" />
               Masuk
             </button>
-            {currentUserProfile && (
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('join');
-                  setErrorMsg(null);
-                  setSuccessMsg(null);
-                  setIsOperationNotAllowed(false);
-                }}
-                className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                  mode === 'join'
-                    ? 'bg-white text-emerald-800 shadow-sm border border-emerald-100/50'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                Kode Masjid
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setMode('register');
+                setErrorMsg(null);
+                setSuccessMsg(null);
+                setIsOperationNotAllowed(false);
+              }}
+              className={`flex-1 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                mode === 'register'
+                  ? 'bg-white text-emerald-800 shadow-sm border border-emerald-100/50'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Daftar Baru
+            </button>
           </div>
         ) : (
           <div className="border-b border-slate-100 bg-slate-50 px-5 py-2.5 flex items-center justify-between">
@@ -241,7 +360,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 setErrorMsg(null);
                 setSuccessMsg(null);
               }}
-              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5"
+              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Kembali ke Menu Masuk
@@ -252,7 +371,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Content Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-          {/* Google 1-Click Login Option (Prominently placed at top for fast experience) */}
+          {/* Google 1-Click Login Option */}
           {(mode === 'login' || mode === 'register') && (
             <div className="space-y-2">
               <button
@@ -298,17 +417,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <p className="font-semibold">{errorMsg}</p>
                 {isOperationNotAllowed && (
                   <div className="pt-2 border-t border-rose-200 space-y-2">
-                    <p className="text-[11px] text-slate-600">
-                      Metode Email/Password di Firebase Console belum diaktifkan. Anda bisa mengaktifkannya dengan membuka console atau klik tombol Google di atas.
+                    <p className="text-[11px] text-rose-800">
+                      <b>Solusi Instan:</b> Klik tombol hijau di atas <i>&quot;Masuk Cepat dengan Akun Google&quot;</i> untuk langsung masuk seketika.
                     </p>
-                    <a
-                      href="https://console.firebase.google.com/project/gen-lang-client-0128738987/authentication/providers"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-semibold transition"
-                    >
-                      Buka Firebase Console Sign-in method <ExternalLink className="w-3 h-3" />
-                    </a>
                   </div>
                 )}
               </div>
@@ -316,28 +427,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           {successMsg && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-2.5 text-xs text-emerald-800">
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-2.5 text-xs text-emerald-800 animate-fade-in">
               <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-emerald-900">Email Terkirim!</p>
-                <p className="mt-0.5 text-emerald-700">{successMsg}</p>
-              </div>
+              <p className="font-medium leading-relaxed">{successMsg}</p>
             </div>
           )}
 
-          {/* Mode Register */}
+          {/* Form Register inputs */}
           {mode === 'register' && (
             <>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Nama Masjid Anda <span className="text-emerald-600">*</span>
+                  Nama Masjid / Mushola <span className="text-emerald-600">*</span>
                 </label>
                 <div className="relative">
                   <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
                     type="text"
                     required
-                    placeholder="Contoh: Masjid Jami Al-Ikhlas"
+                    placeholder="Contoh: Masjid Jami' Al-Ikhlas"
                     value={namaMasjid}
                     onChange={(e) => setNamaMasjid(e.target.value)}
                     className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -364,27 +472,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </>
           )}
 
-          {/* Email input (used in register, login, forgot) */}
-          {mode !== 'join' && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Alamat Email <span className="text-emerald-600">*</span>
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="email"
-                  required
-                  placeholder="nama@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                />
-              </div>
+          {/* Email input */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Alamat Email <span className="text-emerald-600">*</span>
+            </label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="email"
+                required
+                placeholder="nama@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
             </div>
-          )}
+          </div>
 
-          {/* Password input (used in register, login) */}
+          {/* Password input */}
           {(mode === 'register' || mode === 'login') && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -426,35 +532,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </p>
           )}
 
-          {/* Mode Join */}
-          {mode === 'join' && (
-            <div className="space-y-3">
-              <div className="bg-teal-50/70 border border-teal-200/60 rounded-2xl p-3 text-xs text-teal-800 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-teal-600 shrink-0" />
-                <span>
-                  Gabung ke masjid lain menggunakan <b>Kode Masjid</b> (contoh: <code>MSJ-ABC123</code>) yang diberikan oleh Ketua/Bendahara.
-                </span>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Kode Masjid <span className="text-emerald-600">*</span>
-                </label>
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: MSJ-78912"
-                    value={kodeMasjid}
-                    onChange={(e) => setKodeMasjid(e.target.value.toUpperCase())}
-                    className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono tracking-wider uppercase bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Action Submit Button */}
           <button
             type="submit"
@@ -476,15 +553,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <LogIn className="w-4 h-4" />
                 Masuk ke Aplikasi
               </>
-            ) : mode === 'forgot' ? (
+            ) : (
               <>
                 <Mail className="w-4 h-4" />
                 Kirim Link Reset Kata Sandi
-              </>
-            ) : (
-              <>
-                <KeyRound className="w-4 h-4" />
-                Hubungkan ke Masjid Ini
               </>
             )}
           </button>
